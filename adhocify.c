@@ -331,6 +331,7 @@ bool run_prog(const char *eventfile, uint32_t eventmask)
 			char envvar[30];
 			snprintf(envvar, sizeof(envvar), "ADHOCIFYEVENT=%" PRIu32, eventmask);
 			putenv(envvar);
+			setenv("ADHOCIFYFILE",eventfile,1);
 		}
 
 		for(unsigned int i = 0; i < n_script_arguments; i++)
