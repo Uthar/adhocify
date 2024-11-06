@@ -65,6 +65,7 @@ struct ignorelist **ignorelist_current = &ignorelist_head;
 /* Write-once globals. Set from process_arguments*/
 bool silent = false;
 bool noenv = false;
+bool no_dereference = false;
 bool fromstdin = false;
 bool forkbombcheck = true;
 bool daemonize = false;
@@ -203,7 +204,7 @@ void watchqueue_add_path(const char *pathname)
 {
 	*watchlist = xmalloc(sizeof(struct watchlistentry));
 	struct watchlistentry *e = *watchlist;
-	char *path = xrealpath(pathname, NULL);
+	char *path = xstrdup(pathname);
 	e->ifd = 0;
 	e->path = path;
 	e->isdir = path_is_directory(pathname);
@@ -248,6 +249,7 @@ const char *mask_to_names(int mask)
 {
 	static char ret[1024];
 	size_t n = sizeof(ret) - 1;
+	ret[0] = 0;
 	if(mask & IN_ATTRIB)
 	{
 		strncat(ret, "IN_ATTRIB,", n);
@@ -279,6 +281,10 @@ const char *mask_to_names(int mask)
 	if(mask & IN_DELETE_SELF)
 	{
 		strncat(ret, "IN_DELETE_SELF,", n);
+	}
+	if(mask & IN_IGNORED)
+	{
+		strncat(ret, "IN_IGNORED,", n);
 	}
 	if(mask & IN_MODIFY)
 	{
@@ -328,9 +334,7 @@ bool run_prog(const char *eventfile, uint32_t eventmask)
 
 		if(!noenv)
 		{
-			char envvar[30];
-			snprintf(envvar, sizeof(envvar), "ADHOCIFYEVENT=%" PRIu32, eventmask);
-			putenv(envvar);
+			setenv("ADHOCIFYEVENT",mask_to_names(eventmask),1);
 			setenv("ADHOCIFYFILE",eventfile,1);
 		}
 
@@ -462,7 +466,7 @@ char *get_eventfile_abspath(struct inotify_event *event)
 
 void handle_event(struct inotify_event *event)
 {
-	if(event->mask & mask)
+	if (true)
 	{
 		char *eventfile_abspath = get_eventfile_abspath(event);
 		if(eventfile_abspath == NULL)
@@ -502,6 +506,7 @@ void print_usage()
 	printf("--daemon, -d            run as a daemon\n");
 	printf("--path, -w              adds the specified path to the watchlist\n");
 	printf("--logfile, -o           path to write output of adhocify and stdout/stderr of launched commands to\n");
+	printf("--no-dereference        do not dereference paths that are symlinks\n");
 	printf("--mask, -m              inotify event to watch for (see inotify(7)). Can be specified multiple times to "
 		   "watch for several events\n");
 	printf("--no-env, -a            if specified, the inotify event which occured won't be passed to the command as an "
@@ -520,6 +525,7 @@ void print_usage()
 
 static struct option long_options[] = {{"daemon", no_argument, 0, 'd'},
 									   {"logfile", required_argument, 0, 'o'},
+									   {"no-dereference", no_argument, &no_dereference, true},
 									   {"mask", required_argument, 0, 'm'},
 									   {"path", required_argument, 0, 'w'},
 									   {"no-env", no_argument, 0, 'a'},
@@ -795,6 +801,6 @@ int main(int argc, char **argv)
 		perror("inotify_init");
 		exit(EXIT_FAILURE);
 	}
-	create_watches(ifd, mask);
+	create_watches(ifd, no_dereference ? (mask | IN_DONT_FOLLOW) : mask);
 	start_monitoring(ifd);
 }
