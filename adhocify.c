@@ -525,7 +525,7 @@ void print_usage()
 
 static struct option long_options[] = {{"daemon", no_argument, 0, 'd'},
 									   {"logfile", required_argument, 0, 'o'},
-									   {"no-dereference", no_argument, &no_dereference, true},
+									   {"no-dereference", no_argument, (int*)&no_dereference, true},
 									   {"mask", required_argument, 0, 'm'},
 									   {"path", required_argument, 0, 'w'},
 									   {"no-env", no_argument, 0, 'a'},
